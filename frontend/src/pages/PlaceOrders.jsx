@@ -28,9 +28,10 @@ const PlaceOrders = () =>{
         setFormData(data => ({...data, [name] : value}));
     }
 
-    const initPay = (order) =>{
+    const initPay = (data) =>{
+        const { order, key } = data;
         const options = {
-            key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+            key,
             amount: order.amount,
             currency: order.currency,
             name: 'Order Payment',

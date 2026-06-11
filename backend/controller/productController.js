@@ -1,5 +1,5 @@
 import productModel from '../models/productModel.js';
-import {v2 as cloudinary} from 'cloudinary';
+import {v2 as cloudinary} from 'cloudinary';//cloudinary v2 is used for uploading images to cloudinary
 import fs from 'fs';
 import path from 'path';
 

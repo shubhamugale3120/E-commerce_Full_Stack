@@ -2,9 +2,11 @@ import orderModel from '../models/orderModel.js';
 import userModel from '../models/userModel.js';
 import Stripe from 'stripe';
 import razorpay from 'razorpay';
+import crypto from 'crypto';
 
 //global variables
 const currency = 'usd';
+const razorpayCurrency = 'INR';
 const deliveryCharge = 10;
 
 //gateway intialization
@@ -147,17 +149,17 @@ const placeOrderRazorpay = async (req, res) => {
 
         const options = {
             amount: amount * 100,
-            currency: currency.toUpperCase(),
+            currency: razorpayCurrency,
             receipt: newOrder._id.toString(),
         }
 
-        await razorpayInstance.orders.create(options,(error,order)=>{
-            if(error){
-                console.log(error);
-                return res.json({ success: false, message: "Error creating Razorpay order", error: error.message });
-            }
-            res.json({ success: true, orderId: newOrder._id, razorpayOrderId: order.id });
-        })
+        const order = await razorpayInstance.orders.create(options);
+        res.json({
+            success: true,
+            order,
+            key: process.env.RAZORPAY_KEY_ID,
+            orderId: newOrder._id,
+        });
     }catch (error) {
         console.error("Error placing order with Razorpay:", error);
         res.status(500).json({ message: "Error placing order with Razorpay", error: error.message });
@@ -166,16 +168,28 @@ const placeOrderRazorpay = async (req, res) => {
 
 const verifyRazorpay = async (req, res) => {
     try{
-        const { userId, razorpay_order_id } = req.body;
+        const { userId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+        if (!userId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({ success: false, message: "Missing Razorpay payment fields" });
+        }
+
+        const generatedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest('hex');
+
+        if (generatedSignature !== razorpay_signature) {
+            return res.status(400).json({ success: false, message: "Invalid Razorpay signature" });
+        }
 
         const orderInfo = await razorpayInstance.orders.fetch(razorpay_order_id);
-        // console.log(orderInfo);
         if(orderInfo.status === 'paid'){
             await orderModel.findByIdAndUpdate(orderInfo.receipt, { payment: true });
             await userModel.findByIdAndUpdate(userId, { cartData: {} });
             res.status(200).json({ success: true, message: "Payment verified and order placed successfully" });
         }else{
-            res.json({ success: false, message: "Payment verification failed" });
+            res.status(400).json({ success: false, message: "Payment verification failed" });
         }
     }catch (error) {    
         console.error("Error verifying Razorpay payment:", error);

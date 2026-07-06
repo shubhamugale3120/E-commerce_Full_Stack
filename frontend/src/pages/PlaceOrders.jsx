@@ -86,7 +86,8 @@ const PlaceOrders = () =>{
                     navigate('/orders');
                 }else{
                     alert("Error placing order. Please try again.",response.data.error);
-                    console.error("Error placing order:", response.data.error);
+                    // console.error("Error placing order:", response.data.error);
+                    // console.log("Response data:", response.data);
                 }
                 break;
 

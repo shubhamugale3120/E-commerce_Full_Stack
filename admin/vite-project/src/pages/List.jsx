@@ -15,7 +15,7 @@ const List = ({token}) => {
       }else{
         console.log(response.data.message);
       }
-      console.log(response.data);
+      // console.log(response.data);
     }catch(error){
       console.log(error);
     }
